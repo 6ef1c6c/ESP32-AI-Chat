@@ -1,0 +1,2 @@
+-march=rv32imac_zicsr_zifencei_zaamo_zalrsc
+"-specs=/home/builds/esp32_c6_ai/build/specs/picolibc.specs"

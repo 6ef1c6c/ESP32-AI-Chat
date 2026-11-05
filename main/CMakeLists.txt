@@ -1,0 +1,24 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "wifi_manager.cpp"
+        "web_server.cpp"
+        "storage.cpp"
+        "system_monitor.cpp"
+        "rgb_led.cpp"
+    INCLUDE_DIRS "."
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_http_server
+        esp_netif
+        lwip
+        spiffs
+        led_strip
+        driver
+        esp_driver_gpio
+    EMBED_FILES
+        "../web_ui/index.html"
+        "../web_ui/style.css"
+        "../web_ui/app.js"
+)

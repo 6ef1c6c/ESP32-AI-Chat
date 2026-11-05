@@ -1,0 +1,11 @@
+Command: cmake -G Unix Makefiles -B /home/builds/esp32_c6_ai/build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/home/.espressif/python_env/idf6.0_py3.12_env/bin/python -DESP_PLATFORM=1 -DIDF_TARGET=esp32c6 -DCCACHE_ENABLE=False /home/builds/esp32_c6_ai
+CMake Error at /home/builds/esp_idf/tools/cmake/build.cmake:380 (message):
+  Failed to resolve component 'json' required by component 'main': unknown
+  name.
+Call Stack (most recent call first):
+  /home/builds/esp_idf/tools/cmake/build.cmake:423 (__build_resolve_and_add_req)
+  /home/builds/esp_idf/tools/cmake/build.cmake:753 (__build_expand_requirements)
+  /home/builds/esp_idf/tools/cmake/project.cmake:773 (idf_build_process)
+  CMakeLists.txt:4 (project)
+
+

@@ -1,0 +1,2 @@
+"-specs=/home/builds/esp32_c6_ai/build/bootloader/specs/picolibc.specs"
+-march=rv32imac_zicsr_zifencei_zaamo_zalrsc

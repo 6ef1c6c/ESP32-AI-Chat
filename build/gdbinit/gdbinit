@@ -1,0 +1,2 @@
+source /home/builds/esp32_c6_ai/build/gdbinit/symbols
+source /home/builds/esp32_c6_ai/build/gdbinit/connect

@@ -1,0 +1,33 @@
+esp-idf/esp_hal_rmt/CMakeFiles/__idf_esp_hal_rmt.dir/rmt_hal.c.obj: \
+ /home/builds/esp_idf/components/esp_hal_rmt/rmt_hal.c \
+ /home/builds/esp_idf/components/esp_hal_rmt/include/hal/rmt_hal.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/stdint.h \
+ /home/builds/esp_idf/components/esp_libc/platform_include/sys/cdefs.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/cdefs.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/config.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/machine/ieeefp.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/features.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/picolibc.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/15.2.0/include/float.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/machine/_default_types.h \
+ /home/builds/esp32_c6_ai/build/config/sdkconfig.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/15.2.0/include/stddef.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/_intsup.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/_stdint.h \
+ /home/builds/esp_idf/components/esp_hal_rmt/esp32c6/include/hal/rmt_ll.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/15.2.0/include/stdbool.h \
+ /home/builds/esp_idf/components/hal/platform_port/include/hal/misc.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/string.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/_locale.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/strings.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/_types.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/machine/_types.h \
+ /home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include/sys/string.h \
+ /home/builds/esp_idf/components/hal/platform_port/include/hal/assert.h \
+ /home/builds/esp_idf/components/esp_hal_rmt/include/hal/rmt_types.h \
+ /home/builds/esp_idf/components/soc/esp32c6/include/soc/clk_tree_defs.h \
+ /home/builds/esp_idf/components/soc/esp32c6/include/soc/soc_caps.h \
+ /home/builds/esp_idf/components/soc/include/soc/soc_caps_eval.h \
+ /home/builds/esp_idf/components/soc/esp32c6/register/soc/rmt_struct.h \
+ /home/builds/esp_idf/components/soc/esp32c6/register/soc/pcr_struct.h \
+ /home/builds/esp_idf/components/soc/esp32c6/include/soc/retention_periph_defs.h

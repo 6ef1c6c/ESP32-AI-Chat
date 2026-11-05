@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ESP32 AI Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="glass-header">
+            <div class="header-content">
+                <div class="status-dot"></div>
+                <h1>ESP32 AI Chat</h1>
+                <span class="header-status" id="header-status">AP 模式</span>
+            </div>
+        </header>
+
+        <main class="pages">
+            <section id="page-chat" class="page active">
+                <div class="page-inner chat-layout">
+                    <aside class="chat-sidebar glass-card">
+                        <div class="sidebar-header">
+                            <h3 data-i18n="chat.sidebar_title">会话</h3>
+                            <button id="btn-new-chat" class="icon-btn" aria-label="新建聊天">
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                        </div>
+                        <div class="chat-list" id="chat-list"></div>
+                    </aside>
+                    <div class="chat-main">
+                        <div class="chat-messages" id="chat-messages"></div>
+                        <div class="chat-input-area glass">
+                            <input type="text" id="chat-input" data-i18n-placeholder="chat.input_placeholder" placeholder="输入消息..." autocomplete="off">
+                            <button id="chat-send" aria-label="发送">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-logs" class="page">
+                <div class="page-inner">
+                    <div class="log-list" id="log-list">
+                        <div class="log-item info">
+                            <span class="log-time">--:--:--</span>
+                            <span class="log-text" data-i18n="logs.boot">系统启动完成</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-settings" class="page">
+                <div class="page-inner">
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.language.title">语言 / Language</h3>
+                        <div class="lang-switcher">
+                            <button class="lang-btn active" data-lang="zh">中文</button>
+                            <button class="lang-btn" data-lang="en">English</button>
+                        </div>
+                    </div>
+
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.status.title">系统状态</h3>
+                        <div class="metric">
+                            <div class="metric-label">
+                                <span data-i18n="settings.status.cpu">CPU 占用</span>
+                                <span id="metric-cpu-value">0%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill" id="metric-cpu-bar"></div></div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">
+                                <span data-i18n="settings.status.mem">内存 占用</span>
+                                <span id="metric-mem-value">0%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill" id="metric-mem-bar"></div></div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">
+                                <span data-i18n="settings.status.flash">Flash 占用</span>
+                                <span id="metric-flash-value">0%</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill" id="metric-flash-bar"></div></div>
+                        </div>
+                    </div>
+
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.wifi.title">WiFi 连接</h3>
+                        <div class="input-item">
+                            <span data-i18n="settings.wifi.ssid">WiFi 名称</span>
+                            <input type="text" id="wifi-ssid" data-i18n-placeholder="settings.wifi.ssid_placeholder" placeholder="输入 WiFi SSID">
+                        </div>
+                        <div class="input-item">
+                            <span data-i18n="settings.wifi.password">密码</span>
+                            <input type="password" id="wifi-password" data-i18n-placeholder="settings.wifi.password_placeholder" placeholder="输入密码">
+                        </div>
+                        <button class="btn-primary" id="btn-add-wifi" data-i18n="settings.wifi.add_btn">添加并保存</button>
+                        <h4 class="sub-title" data-i18n="settings.wifi.saved_title">已保存的网络</h4>
+                        <div class="wifi-list" id="wifi-list"></div>
+                        <h4 class="sub-title" data-i18n="settings.wifi.scan_title">附近网络</h4>
+                        <button class="btn-secondary" id="btn-scan-wifi" data-i18n="settings.wifi.scan_btn">扫描</button>
+                        <div class="wifi-scan-list" id="wifi-scan-list"></div>
+                    </div>
+
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.ap.title">AP 热点</h3>
+                        <div class="input-item">
+                            <span data-i18n="settings.ap.ssid">热点名称</span>
+                            <input type="text" id="ap-ssid" placeholder="ESP32 AI Chat">
+                        </div>
+                        <div class="input-item">
+                            <span data-i18n="settings.ap.password">热点密码</span>
+                            <input type="text" id="ap-password" placeholder="ESP123456">
+                        </div>
+                        <button class="btn-primary" id="btn-save-ap" data-i18n="settings.ap.save_btn">保存并重启 AP</button>
+                    </div>
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.ai.title">AI 配置</h3>
+                        <div class="input-item">
+                            <span data-i18n="settings.ai.api_url">API 地址</span>
+                            <input type="text" id="ai-api-url" data-i18n-placeholder="settings.ai.api_url_placeholder" placeholder="https://api.example.com/v1/chat/completions">
+                        </div>
+                        <div class="input-item">
+                            <span data-i18n="settings.ai.api_key">API Key</span>
+                            <input type="password" id="ai-api-key" data-i18n-placeholder="settings.ai.api_key_placeholder" placeholder="输入 API Key">
+                        </div>
+                        <div class="input-item">
+                            <span data-i18n="settings.ai.personality">人格设置</span>
+                            <textarea id="ai-personality" data-i18n-placeholder="settings.ai.personality_placeholder" placeholder="输入系统提示词 / 人格设定"></textarea>
+                        </div>
+                        <button class="btn-primary" id="btn-save-ai" data-i18n="settings.ai.save_btn">保存 AI 配置</button>
+                    </div>
+
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.log.title">日志等级</h3>
+                        <div class="radio-group" id="log-level-group">
+                            <label class="radio-item"><input type="radio" name="log_level" value="0"><span data-i18n="settings.log.off">关闭</span></label>
+                            <label class="radio-item"><input type="radio" name="log_level" value="1"><span data-i18n="settings.log.error">Error</span></label>
+                            <label class="radio-item"><input type="radio" name="log_level" value="2"><span data-i18n="settings.log.info">Info</span></label>
+                            <label class="radio-item"><input type="radio" name="log_level" value="3"><span data-i18n="settings.log.debug">Debug</span></label>
+                        </div>
+                    </div>
+
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.rgb.title">RGB 灯</h3>
+                        <div class="rgb-modes" id="rgb-modes">
+                            <button class="rgb-btn" data-mode="1" data-i18n="settings.rgb.red">红</button>
+                            <button class="rgb-btn" data-mode="2" data-i18n="settings.rgb.green">绿</button>
+                            <button class="rgb-btn" data-mode="3" data-i18n="settings.rgb.blue">蓝</button>
+                            <button class="rgb-btn rgb-gradient" data-mode="4" data-i18n="settings.rgb.gradient">渐变</button>
+                            <button class="rgb-btn rgb-off active" data-mode="0" data-i18n="settings.rgb.off">关闭</button>
+                        </div>
+                        <div class="input-item">
+                            <span data-i18n="settings.rgb.pin">数据引脚</span>
+                            <input type="number" id="rgb-pin" placeholder="8" min="0" max="48">
+                        </div>
+                        <button class="btn-primary" id="btn-save-rgb" data-i18n="settings.rgb.save_btn">保存 RGB 设置</button>
+                    </div>
+
+
+
+
+                </div>
+            </section>
+
+            <section id="page-about" class="page">
+                <div class="page-inner about-center">
+                    <div class="about-card glass-card">
+                        <div class="about-icon">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"></rect><path d="M9 9h6v6H9z"></path><path d="M9 1v3"></path><path d="M15 1v3"></path><path d="M9 20v3"></path><path d="M15 20v3"></path><path d="M20 9h3"></path><path d="M20 15h3"></path><path d="M1 9h3"></path><path d="M1 15h3"></path></svg>
+                        </div>
+                        <h2>ESP32 AI Chat</h2>
+                        <p class="about-version" data-i18n="about.version">固件版本 v0.1.0</p>
+                        <p class="about-desc" data-i18n="about.desc">基于 ESP32-C6 的轻量级 AI API 调用固件。通过 AP 热点提供 Web 交互界面，支持多 WiFi 自动连接与网络共享。</p>
+                        <div class="about-info">
+                            <div class="info-row"><span data-i18n="about.chip">芯片</span><span>ESP32-C6</span></div>
+                            <div class="info-row"><span data-i18n="about.ui">UI 风格</span><span>Miuix Lite Glass</span></div>
+                            <div class="info-row"><span data-i18n="about.flash">Flash</span><span>16MB</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <nav class="bottom-bar glass">
+            <button class="nav-item active" data-page="page-chat">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                <span data-i18n="nav.chat">聊天</span>
+            </button>
+            <button class="nav-item" data-page="page-logs">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span data-i18n="nav.logs">日志</span>
+            </button>
+            <button class="nav-item" data-page="page-settings">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span data-i18n="nav.settings">设置</span>
+            </button>
+            <button class="nav-item" data-page="page-about">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span data-i18n="nav.about">关于</span>
+            </button>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
