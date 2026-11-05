@@ -1,5 +1,8 @@
 # ESP AI Chat
 
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Architecture](https://img.shields.io/badge/Architecture-RISC--V-blue.svg?logo=riscv&logoColor=white)
+
 本项目是为ESP32-C6开发板所制作的AI工具,未来可能支持更多的开发板.
 
 ## 🔗 实现
@@ -8,26 +11,26 @@
 
 ### 配网与控制
 - **默认热点**:连接开发板开启的AP热点.
-- **控制地址**:通过`192.168.4.1`进行控制.
-- **默认密码**:`ESP123456`
+- **控制地址**:通过192.168.4.1进行控制.
+- **默认密码**:ESP123456
 - **运行模式**:默认情况下为AP+STA双模运行.
 
 ### 关于分区
-- **`NVS`分区**:存放API Key,Wi-Fi密码等基础配置.
-- **`LittleFS`分区**:存储聊天记录等文件数据.
+- **NVS分区**:存放API Key,Wi-Fi密码等基础配置.
+- **LittleFS分区**:存储聊天记录等文件数据.
 
 ### AI聊天
-本工具通过调用`API Key`来实现聊天功能.进入后台界面后,需设置连接的网络并配置`API Key`才可正常使用.
+本工具通过调用API Key来实现聊天功能.进入后台界面后,需设置连接的网络并配置API Key才可正常使用.
 
 ### 其他功能
 - **RGB指示灯**:支持控制(红,蓝,绿,渐变,关闭).
-- **日志系统**:支持4个等级的过滤(`off`,`error`,`info`,`debug`).
+- **日志系统**:支持4个等级的过滤(off,error,info,debug).
 - **状态监控**:实时显示开发板状态(CPU占用,内存占用,Flash占用).
 
 ## 🔗 环境
 
-- 框架:`ESP-IDF v6.1`
-- 芯片:`ESP32-C6`
+- 框架:ESP-IDF v6.1
+- 芯片:ESP32-C6
 
 ## 📄 License
 
