@@ -34,6 +34,11 @@ struct RGBConfig {
     int pin = 8;
 };
 
+struct ChatInfo {
+    std::string id;
+    std::string title;
+};
+
 bool init();
 bool save_language(const std::string& lang);
 std::string load_language();
@@ -51,7 +56,7 @@ bool save_ap_config(const APConfig& cfg);
 APConfig load_ap_config();
 bool chat_save(const std::string& chat_id, const std::string& json_data);
 std::string chat_load(const std::string& chat_id);
-std::vector<std::string> chat_list();
+std::vector<ChatInfo> chat_list();
 bool chat_delete(const std::string& chat_id);
 
 }

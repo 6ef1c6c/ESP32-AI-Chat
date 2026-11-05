@@ -9,19 +9,20 @@
             'header.online': '已联网', 'header.ap_mode': 'AP 模式',
             'chat.sidebar_title': '会话', 'chat.input_placeholder': '输入消息...',
             'chat.new_title': '聊天', 'chat.welcome': '你好，我是 ESP32-C6 AI 助手。',
-            'logs.boot': '系统启动完成', 'logs.ui_loaded': 'Web UI 加载完成',
-            'logs.send_msg': '发送消息', 'logs.new_chat': '新建聊天', 'logs.chat_deleted': '聊天已删除',
-            'logs.delete_confirm': '确定删除这个聊天吗？',
-            'logs.wifi_saved': '已保存 WiFi', 'logs.wifi_deleted': '已删除 WiFi',
-            'logs.connecting_wifi': '正在连接 WiFi', 'logs.connect_started': '已发起连接', 'logs.connect_failed': '连接失败',
-            'logs.ap_saved': 'AP 设置已保存', 'logs.ap_save_failed': 'AP 设置保存失败',
-            'logs.lang_switched': '语言已切换', 'logs.ai_saved': 'AI 配置已保存', 'logs.ai_save_failed': 'AI 配置保存失败',
-            'logs.log_level_saved': '日志等级已切换', 'logs.log_level_failed': '日志等级切换失败',
-            'logs.rgb_saved': 'RGB 设置已保存', 'logs.rgb_save_failed': 'RGB 设置保存失败',
-            'logs.load_chat_list_failed': '加载聊天列表失败', 'logs.load_chat_failed': '加载聊天记录失败',
-            'logs.load_wifi_failed': '加载 WiFi 列表失败', 'logs.save_wifi_failed': '保存 WiFi 失败',
-            'logs.status_failed': '获取状态失败', 'logs.system_status_failed': '获取系统状态失败',
-            'logs.load_ai_failed': '加载 AI 配置失败', 'logs.load_log_level_failed': '加载日志等级失败', 'logs.load_rgb_failed': '加载 RGB 设置失败',
+            'chat.rename_title': '重命名会话', 'chat.rename_placeholder': '输入新名称', 'logs.chat_renamed': '会话已重命名',
+            'logs.boot': 'System boot complete', 'logs.ui_loaded': 'Web UI loaded',
+            'logs.send_msg': 'Message sent', 'logs.new_chat': 'New chat created', 'logs.chat_deleted': 'Chat deleted',
+            'logs.delete_confirm': 'Delete this chat?',
+            'logs.wifi_saved': 'WiFi saved', 'logs.wifi_deleted': 'WiFi deleted',
+            'logs.connecting_wifi': 'Connecting to WiFi', 'logs.connect_started': 'Connection started', 'logs.connect_failed': 'Connection failed',
+            'logs.ap_saved': 'AP settings saved', 'logs.ap_save_failed': 'Failed to save AP settings',
+            'logs.lang_switched': 'Language switched', 'logs.ai_saved': 'AI config saved', 'logs.ai_save_failed': 'Failed to save AI config',
+            'logs.log_level_saved': 'Log level switched', 'logs.log_level_failed': 'Failed to switch log level',
+            'logs.rgb_saved': 'RGB settings saved', 'logs.rgb_save_failed': 'Failed to save RGB settings',
+            'logs.load_chat_list_failed': 'Failed to load chat list', 'logs.load_chat_failed': 'Failed to load chat history',
+            'logs.load_wifi_failed': 'Failed to load WiFi list', 'logs.save_wifi_failed': 'Failed to save WiFi',
+            'logs.status_failed': 'Failed to get status', 'logs.system_status_failed': 'Failed to get system status',
+            'logs.load_ai_failed': 'Failed to load AI config', 'logs.load_log_level_failed': 'Failed to load log level', 'logs.load_rgb_failed': 'Failed to load RGB settings',
             'settings.language.title': '语言 / Language',
             'settings.status.title': '系统状态', 'settings.status.cpu': 'CPU 占用', 'settings.status.mem': '内存 占用', 'settings.status.flash': 'Flash 占用',
             'settings.rgb.title': 'RGB 灯', 'settings.rgb.red': '红', 'settings.rgb.green': '绿', 'settings.rgb.blue': '蓝', 'settings.rgb.gradient': '渐变', 'settings.rgb.off': '关闭', 'settings.rgb.pin': '数据引脚', 'settings.rgb.save_btn': '保存 RGB 设置',
@@ -48,6 +49,7 @@
             'header.online': 'Online', 'header.ap_mode': 'AP Mode',
             'chat.sidebar_title': 'Chats', 'chat.input_placeholder': 'Type a message...',
             'chat.new_title': 'Chat', 'chat.welcome': 'Hello, I am the ESP32-C6 AI assistant.',
+            'chat.rename_title': 'Rename chat', 'chat.rename_placeholder': 'Enter new name', 'logs.chat_renamed': 'Chat renamed',
             'logs.boot': 'System boot complete', 'logs.ui_loaded': 'Web UI loaded',
             'logs.send_msg': 'Message sent', 'logs.new_chat': 'New chat created', 'logs.chat_deleted': 'Chat deleted',
             'logs.delete_confirm': 'Delete this chat?',
@@ -192,18 +194,37 @@
     const chatMessages = document.getElementById('chat-messages');
     const chatListEl = document.getElementById('chat-list');
     const btnNewChat = document.getElementById('btn-new-chat');
+    const btnChatMenu = document.getElementById('btn-chat-menu');
+    const chatDrawer = document.getElementById('chat-drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const chatTitle = document.getElementById('chat-title');
 
     let chats = {};
     let currentChatId = null;
+
+    function openDrawer() {
+        chatDrawer.classList.add('open');
+        drawerOverlay.classList.add('open');
+    }
+
+    function closeDrawer() {
+        chatDrawer.classList.remove('open');
+        drawerOverlay.classList.remove('open');
+    }
+
+    function updateChatTitle() {
+        chatTitle.textContent = (currentChatId && chats[currentChatId]) ? chats[currentChatId].title : t('chat.sidebar_title');
+    }
 
     function renderChatList() {
         chatListEl.innerHTML = '';
         Object.keys(chats).forEach(id => {
             const item = document.createElement('div');
             item.className = `chat-item ${id === currentChatId ? 'active' : ''}`;
-            item.innerHTML = `<span>${escapeHtml(chats[id].title)}</span><button class="del-chat" data-id="${id}">×</button>`;
-            item.querySelector('span').addEventListener('click', () => loadChat(id));
-            item.querySelector('.del-chat').addEventListener('click', (e) => { e.stopPropagation(); deleteChat(id); });
+            item.innerHTML = `<span class="chat-name">${escapeHtml(chats[id].title)}</span><div class="chat-actions"><button class="btn-rename" title="${t('chat.rename_title')}">✎</button><button class="btn-delete" title="${t('wifi.delete')}">✕</button></div>`;
+            item.querySelector('.chat-name').addEventListener('click', () => { loadChat(id); closeDrawer(); });
+            item.querySelector('.btn-rename').addEventListener('click', (e) => { e.stopPropagation(); renameChat(id); });
+            item.querySelector('.btn-delete').addEventListener('click', (e) => { e.stopPropagation(); deleteChat(id); });
             chatListEl.appendChild(item);
         });
     }
@@ -229,7 +250,7 @@
 
     async function saveCurrentChat() {
         if (!currentChatId) return;
-        await apiPost('/api/chat/save', { id: currentChatId, messages: chats[currentChatId].messages });
+        await apiPost('/api/chat/save', { id: currentChatId, title: chats[currentChatId].title, messages: chats[currentChatId].messages });
     }
 
     function createChat() {
@@ -239,17 +260,26 @@
         loadChat(id);
         renderChatList();
         saveCurrentChat();
+        closeDrawer();
         addLog(t('logs.new_chat') + ': ' + title);
     }
 
     async function loadChat(id) {
         currentChatId = id;
         try {
-            const messages = await apiGet(`/api/chat/get?id=${id}`);
-            chats[id].messages = Array.isArray(messages) && messages.length > 0 ? messages : [{ text: t('chat.welcome'), sender: 'bot', time: getTimeString() }];
+            const data = await apiGet(`/api/chat/get?id=${id}`);
+            if (data && Array.isArray(data.messages)) {
+                chats[id].title = data.title || chats[id].title;
+                chats[id].messages = data.messages.length > 0 ? data.messages : [{ text: t('chat.welcome'), sender: 'bot', time: getTimeString() }];
+            } else if (Array.isArray(data) && data.length > 0) {
+                chats[id].messages = data;
+            } else {
+                chats[id].messages = [{ text: t('chat.welcome'), sender: 'bot', time: getTimeString() }];
+            }
         } catch (e) {
             addLog(t('logs.load_chat_failed'), 'error');
         }
+        updateChatTitle();
         renderChatList();
         renderMessages();
     }
@@ -262,10 +292,23 @@
                 const ids = Object.keys(chats);
                 currentChatId = ids.length > 0 ? ids[0] : null;
             }
+            updateChatTitle();
             renderChatList();
             renderMessages();
             addLog(t('logs.chat_deleted'));
         }
+    }
+
+    async function renameChat(id) {
+        const newName = prompt(t('chat.rename_placeholder'), chats[id]?.title || '');
+        if (newName === null) return;
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        chats[id].title = trimmed;
+        if (currentChatId === id) updateChatTitle();
+        renderChatList();
+        if (currentChatId === id) await saveCurrentChat();
+        addLog(t('logs.chat_renamed') + ': ' + trimmed);
     }
 
     async function loadChatList() {
@@ -278,6 +321,7 @@
                 currentChatId = ids.length > 0 ? ids[0] : null;
             }
             renderChatList();
+            updateChatTitle();
             if (currentChatId) await loadChat(currentChatId);
         } catch (e) {
             addLog(t('logs.load_chat_list_failed'), 'error');
@@ -296,6 +340,8 @@
     chatSend.addEventListener('click', sendChat);
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); });
     btnNewChat.addEventListener('click', createChat);
+    if (btnChatMenu) btnChatMenu.addEventListener('click', openDrawer);
+    if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
 
     const wifiSsid = document.getElementById('wifi-ssid');
     const wifiPassword = document.getElementById('wifi-password');

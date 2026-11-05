@@ -354,12 +354,12 @@ static esp_err_t api_ap_set(httpd_req_t* req) {
 }
 
 static esp_err_t api_chat_list(httpd_req_t* req) {
-    auto ids = storage::chat_list();
+    auto chats = storage::chat_list();
     cJSON* arr = cJSON_CreateArray();
-    for (const auto& id : ids) {
+    for (const auto& c : chats) {
         cJSON* obj = cJSON_CreateObject();
-        cJSON_AddStringToObject(obj, "id", id.c_str());
-        cJSON_AddStringToObject(obj, "title", ("Chat " + id).c_str());
+        cJSON_AddStringToObject(obj, "id", c.id.c_str());
+        cJSON_AddStringToObject(obj, "title", c.title.c_str());
         cJSON_AddItemToArray(arr, obj);
     }
     esp_err_t ret = send_json(req, arr);
@@ -384,12 +384,17 @@ static esp_err_t api_chat_save(httpd_req_t* req) {
     if (!root) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
 
     cJSON* id = cJSON_GetObjectItem(root, "id");
+    cJSON* title = cJSON_GetObjectItem(root, "title");
     cJSON* messages = cJSON_GetObjectItem(root, "messages");
     bool ok = (id && messages && cJSON_IsString(id));
     if (ok) {
-        char* str = cJSON_PrintUnformatted(messages);
+        cJSON* data = cJSON_CreateObject();
+        cJSON_AddStringToObject(data, "title", (title && cJSON_IsString(title)) ? title->valuestring : id->valuestring);
+        cJSON_AddItemReferenceToObject(data, "messages", messages);
+        char* str = cJSON_PrintUnformatted(data);
         ok = storage::chat_save(id->valuestring, str);
         free(str);
+        cJSON_Delete(data);
     }
     cJSON_Delete(root);
     return send_success(req, ok);

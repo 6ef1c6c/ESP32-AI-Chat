@@ -264,8 +264,8 @@ std::string chat_load(const std::string& chat_id) {
     return data.empty() ? "[]" : data;
 }
 
-std::vector<std::string> chat_list() {
-    std::vector<std::string> result;
+std::vector<ChatInfo> chat_list() {
+    std::vector<ChatInfo> result;
     DIR* dir = opendir("/littlefs");
     if (!dir) return result;
 
@@ -273,7 +273,18 @@ std::vector<std::string> chat_list() {
     while ((entry = readdir(dir)) != nullptr) {
         std::string name = entry->d_name;
         if (name.find("chat_") == 0 && name.find(".json") != std::string::npos) {
-            result.push_back(name.substr(5, name.length() - 10));
+            std::string id = name.substr(5, name.length() - 10);
+            std::string title = "Chat " + id;
+            std::string data = chat_load(id);
+            cJSON* root = cJSON_Parse(data.c_str());
+            if (root) {
+                cJSON* t = cJSON_GetObjectItem(root, "title");
+                if (t && cJSON_IsString(t) && strlen(t->valuestring) > 0) {
+                    title = t->valuestring;
+                }
+                cJSON_Delete(root);
+            }
+            result.push_back({id, title});
         }
     }
     closedir(dir);
