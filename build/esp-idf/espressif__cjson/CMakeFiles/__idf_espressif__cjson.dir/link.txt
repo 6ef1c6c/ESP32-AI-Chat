@@ -1,2 +1,0 @@
-/home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin/riscv32-esp-elf-ar qc libespressif__cjson.a CMakeFiles/__idf_espressif__cjson.dir/cJSON/cJSON.c.obj CMakeFiles/__idf_espressif__cjson.dir/cJSON/cJSON_Utils.c.obj
-/home/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin/riscv32-esp-elf-ranlib libespressif__cjson.a

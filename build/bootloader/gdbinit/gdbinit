@@ -1,2 +1,0 @@
-source /home/builds/esp32_c6_ai/build/bootloader/gdbinit/symbols
-source /home/builds/esp32_c6_ai/build/bootloader/gdbinit/connect

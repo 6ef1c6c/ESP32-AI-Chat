@@ -1,2 +1,0 @@
---flash-mode dio --flash-freq 80m --flash-size 16MB
-0x100000 esp32_c6_ai.bin
