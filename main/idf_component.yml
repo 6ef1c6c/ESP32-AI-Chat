@@ -16,3 +16,4 @@ dependencies:
   #   public: true
   espressif/led_strip: '*'
   espressif/cjson: '^1.7.19'
+  joltwallet/littlefs: '^1.23.1'

@@ -1,6 +1,6 @@
 #include "system_monitor.h"
 #include "esp_heap_caps.h"
-#include "esp_spiffs.h"
+#include "esp_littlefs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <cstring>
@@ -61,7 +61,7 @@ SystemStatus get_status() {
     }
 
     size_t flash_total = 0, flash_used = 0;
-    if (esp_spiffs_info(nullptr, &flash_total, &flash_used) == ESP_OK && flash_total > 0) {
+    if (esp_littlefs_info("littlefs", &flash_total, &flash_used) == ESP_OK && flash_total > 0) {
         status.flash_total = flash_total;
         status.flash_used = flash_used;
         status.flash_percent = (status.flash_used * 100) / status.flash_total;

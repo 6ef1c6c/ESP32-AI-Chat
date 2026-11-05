@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "nvs.h"
-#include "esp_spiffs.h"
+#include "esp_littlefs.h"
 #include "cJSON.h"
 #include <cstring>
 #include <cstdio>
@@ -29,22 +29,22 @@ bool init() {
     }
     ESP_ERROR_CHECK(ret);
 
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/spiffs",
-        .partition_label = nullptr,
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = "/littlefs",
+        .partition_label = "littlefs",
         .max_files = 5,
         .format_if_mount_failed = true,
     };
 
-    ret = esp_vfs_spiffs_register(&conf);
+    ret = esp_vfs_littlefs_register(&conf);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "SPIFFS mount failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "LittleFS mount failed: %s", esp_err_to_name(ret));
         return false;
     }
 
     size_t total = 0, used = 0;
-    if (esp_spiffs_info(nullptr, &total, &used) == ESP_OK) {
-        ESP_LOGI(TAG, "SPIFFS: total=%d, used=%d", total, used);
+    if (esp_littlefs_info("littlefs", &total, &used) == ESP_OK) {
+        ESP_LOGI(TAG, "LittleFS: total=%d, used=%d", total, used);
     }
     return true;
 }
@@ -240,7 +240,7 @@ RGBConfig load_rgb_config() {
 }
 
 static std::string chat_path(const std::string& chat_id) {
-    return "/spiffs/chat_" + chat_id + ".json";
+    return "/littlefs/chat_" + chat_id + ".json";
 }
 
 bool chat_save(const std::string& chat_id, const std::string& json_data) {
@@ -266,7 +266,7 @@ std::string chat_load(const std::string& chat_id) {
 
 std::vector<std::string> chat_list() {
     std::vector<std::string> result;
-    DIR* dir = opendir("/spiffs");
+    DIR* dir = opendir("/littlefs");
     if (!dir) return result;
 
     struct dirent* entry;

@@ -279,9 +279,10 @@ static esp_err_t api_wifi_add(httpd_req_t* req) {
 
     cJSON* ssid = cJSON_GetObjectItem(root, "ssid");
     cJSON* password = cJSON_GetObjectItem(root, "password");
-    bool ok = (ssid && password && cJSON_IsString(ssid) && cJSON_IsString(password));
+    bool ok = (ssid && cJSON_IsString(ssid));
     if (ok) {
-        ok = storage::add_wifi_cred(ssid->valuestring, password->valuestring);
+        const char* pass = (password && cJSON_IsString(password)) ? password->valuestring : "";
+        ok = storage::add_wifi_cred(ssid->valuestring, pass);
         if (ok) log("WiFi saved: " + std::string(ssid->valuestring));
     }
     cJSON_Delete(root);

@@ -13,7 +13,7 @@ idf_component_register(
         esp_http_server
         esp_netif
         lwip
-        spiffs
+        littlefs
         led_strip
         driver
         esp_driver_gpio

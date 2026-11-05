@@ -386,21 +386,34 @@
     const aiApiKey = document.getElementById('ai-api-key');
     const aiPersonality = document.getElementById('ai-personality');
     const btnSaveAi = document.getElementById('btn-save-ai');
+    let savedApiKey = '';
+
+    function maskKey(key) {
+        if (!key || key.length <= 12) return key;
+        return key.slice(0, 6) + '*'.repeat(10) + key.slice(-5);
+    }
 
     async function loadAiConfig() {
         await loadConfig('/api/ai', cfg => {
             aiApiUrl.value = cfg.api_url || '';
-            aiApiKey.value = cfg.api_key || '';
+            savedApiKey = cfg.api_key || '';
+            aiApiKey.value = maskKey(savedApiKey);
             aiPersonality.value = cfg.personality || '';
         }, 'logs.load_ai_failed');
     }
 
     async function saveAiConfig() {
-        await saveConfig('/api/ai', {
+        const inputValue = aiApiKey.value;
+        const apiKey = (inputValue === maskKey(savedApiKey)) ? savedApiKey : inputValue.trim();
+        const ok = await saveConfig('/api/ai', {
             api_url: aiApiUrl.value.trim(),
-            api_key: aiApiKey.value,
+            api_key: apiKey,
             personality: aiPersonality.value.trim()
         }, 'logs.ai_saved', 'logs.ai_save_failed');
+        if (ok) {
+            savedApiKey = apiKey;
+            aiApiKey.value = maskKey(savedApiKey);
+        }
     }
 
     btnSaveAi.addEventListener('click', saveAiConfig);
@@ -484,6 +497,7 @@
     const apSsid = document.getElementById('ap-ssid');
     const apPassword = document.getElementById('ap-password');
     const btnSaveAp = document.getElementById('btn-save-ap');
+    const btnToggleAp = document.getElementById('btn-toggle-ap');
     const headerStatus = document.getElementById('header-status');
 
     let lastStatus = {};
@@ -514,6 +528,15 @@
     }
 
     btnSaveAp.addEventListener('click', saveAp);
+
+    if (btnToggleAp) {
+        btnToggleAp.addEventListener('click', () => {
+            const isHidden = apPassword.type === 'password';
+            apPassword.type = isHidden ? 'text' : 'password';
+            btnToggleAp.querySelector('.eye-open').style.display = isHidden ? 'inline' : 'none';
+            btnToggleAp.querySelector('.eye-closed').style.display = isHidden ? 'none' : 'inline';
+        });
+    }
 
     document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => setLanguage(btn.dataset.lang)));
 
