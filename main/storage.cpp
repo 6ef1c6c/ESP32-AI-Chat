@@ -5,8 +5,6 @@
 #include "esp_littlefs.h"
 #include "cJSON.h"
 #include <cstring>
-#include <cstdio>
-#include <cstdlib>
 #include <dirent.h>
 #include <algorithm>
 
@@ -29,12 +27,10 @@ bool init() {
     }
     ESP_ERROR_CHECK(ret);
 
-    esp_vfs_littlefs_conf_t conf = {
-        .base_path = "/littlefs",
-        .partition_label = "littlefs",
-        .max_files = 5,
-        .format_if_mount_failed = true,
-    };
+    esp_vfs_littlefs_conf_t conf = {};
+    conf.base_path = "/littlefs";
+    conf.partition_label = "littlefs";
+    conf.format_if_mount_failed = true;
 
     ret = esp_vfs_littlefs_register(&conf);
     if (ret != ESP_OK) {

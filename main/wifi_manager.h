@@ -6,17 +6,7 @@
 
 namespace wifi {
 
-struct ConnectionResult {
-    bool connected;
-    std::string ssid;
-    std::string ip;
-    int rssi;
-    std::string ping_baidu;
-    std::string ping_google;
-};
-
 using OnStatusChange = std::function<void(const std::string& status)>;
-using OnConnected = std::function<void(const ConnectionResult& result)>;
 
 struct ScannedAP {
     std::string ssid;
@@ -25,7 +15,7 @@ struct ScannedAP {
 };
 
 bool init();
-void register_callbacks(OnStatusChange status_cb, OnConnected conn_cb);
+void register_callbacks(OnStatusChange status_cb);
 bool start_ap(const storage::APConfig& cfg);
 bool connect_sta(const std::string& ssid, const std::string& password);
 void disconnect_sta();

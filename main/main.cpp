@@ -4,7 +4,6 @@
 #include "system_monitor.h"
 #include "rgb_led.h"
 #include "esp_log.h"
-#include "esp_event.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -16,10 +15,6 @@ static void log_to_storage(const std::string& msg) {
 
 static void on_wifi_status(const std::string& status) {
     ESP_LOGI(TAG, "WiFi status: %s", status.c_str());
-}
-
-static void on_wifi_connected(const wifi::ConnectionResult& result) {
-    ESP_LOGI(TAG, "Connected to %s, IP: %s", result.ssid.c_str(), result.ip.c_str());
 }
 
 static void apply_log_level() {
@@ -47,7 +42,7 @@ extern "C" void app_main(void) {
 
     auto apcfg = storage::load_ap_config();
     if (apcfg.ssid.empty()) {
-        apcfg.ssid = "ESP_chat";
+        apcfg.ssid = "ESP32 AI Chat";
         apcfg.password = "ESP123456";
         storage::save_ap_config(apcfg);
     }
@@ -57,7 +52,7 @@ extern "C" void app_main(void) {
         return;
     }
 
-    wifi::register_callbacks(on_wifi_status, on_wifi_connected);
+    wifi::register_callbacks(on_wifi_status);
     wifi::start_ap(apcfg);
 
     vTaskDelay(pdMS_TO_TICKS(1000));

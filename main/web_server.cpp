@@ -6,9 +6,7 @@
 #include "esp_log.h"
 #include "esp_http_server.h"
 #include "cJSON.h"
-#include <cstring>
 #include <string>
-#include <algorithm>
 
 static const char* TAG = "web_server";
 

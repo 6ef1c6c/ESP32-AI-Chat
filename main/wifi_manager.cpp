@@ -25,11 +25,8 @@ static const char* TAG = "wifi_mgr";
 static esp_netif_t* s_sta_netif = nullptr;
 static esp_netif_t* s_ap_netif = nullptr;
 static wifi::OnStatusChange s_status_cb = nullptr;
-static wifi::OnConnected s_conn_cb = nullptr;
 static bool s_sta_connected = false;
 static std::string s_sta_ssid;
-static std::string s_ping_baidu = "-";
-static std::string s_ping_google = "-";
 
 static void notify_status(const std::string& status) {
     ESP_LOGI(TAG, "%s", status.c_str());
@@ -97,9 +94,8 @@ bool init() {
     return true;
 }
 
-void register_callbacks(OnStatusChange status_cb, OnConnected conn_cb) {
+void register_callbacks(OnStatusChange status_cb) {
     s_status_cb = status_cb;
-    s_conn_cb = conn_cb;
 }
 
 bool start_ap(const storage::APConfig& cfg) {
@@ -161,8 +157,7 @@ static std::string auth_mode_to_str(wifi_auth_mode_t auth) {
     }
 }
 
-std::vector<ScannedAP> scan_networks() {
-    std::vector<ScannedAP> result;
+static std::vector<wifi_ap_record_t> do_scan() {
     wifi_scan_config_t scan_conf = {};
     scan_conf.scan_type = WIFI_SCAN_TYPE_ACTIVE;
     scan_conf.scan_time.active.min = 100;
@@ -170,22 +165,27 @@ std::vector<ScannedAP> scan_networks() {
 
     if (esp_wifi_scan_start(&scan_conf, true) != ESP_OK) {
         notify_status("WiFi scan failed");
-        return result;
+        return {};
     }
 
     uint16_t num = 0;
     esp_wifi_scan_get_ap_num(&num);
     if (num == 0) {
         esp_wifi_scan_get_ap_records(&num, nullptr);
-        return result;
+        return {};
     }
 
     std::vector<wifi_ap_record_t> records(num);
     if (esp_wifi_scan_get_ap_records(&num, records.data()) != ESP_OK) {
-        return result;
+        return {};
     }
+    return records;
+}
 
-    // 去重并保留信号最强的同名 AP
+std::vector<ScannedAP> scan_networks() {
+    std::vector<ScannedAP> result;
+    auto records = do_scan();
+
     for (const auto& r : records) {
         std::string ssid((const char*)r.ssid);
         if (ssid.empty()) continue;
@@ -208,27 +208,12 @@ void disconnect_sta() {
 }
 
 bool scan_and_connect_saved() {
-    wifi_scan_config_t scan_conf = {};
-    scan_conf.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-    scan_conf.scan_time.active.min = 100;
-    scan_conf.scan_time.active.max = 300;
-
     notify_status("Scanning WiFi...");
-    if (esp_wifi_scan_start(&scan_conf, true) != ESP_OK) {
-        notify_status("WiFi scan failed");
-        return false;
-    }
-
-    uint16_t num = 0;
-    esp_wifi_scan_get_ap_num(&num);
-    if (num == 0) {
-        esp_wifi_scan_get_ap_records(&num, nullptr);
+    auto records = do_scan();
+    if (records.empty()) {
         notify_status("No WiFi found");
         return false;
     }
-
-    std::vector<wifi_ap_record_t> records(num);
-    esp_wifi_scan_get_ap_records(&num, records.data());
 
     auto saved = storage::load_wifi_creds();
     for (const auto& ap : records) {
@@ -259,7 +244,6 @@ std::string get_sta_ip() {
 }
 
 void apply_dns() {
-    // 优先 IPv6：阿里 DNS IPv6，IPv4 作为兼容回退
     esp_netif_dns_info_t dns_v6 = { .ip = ESP_IP6ADDR_INIT(0x24003200, 0, 0, 1) };
     esp_netif_set_dns_info(s_sta_netif, ESP_NETIF_DNS_MAIN, &dns_v6);
 
@@ -291,13 +275,7 @@ static void ping_success(esp_ping_handle_t hdl, void* args) {
     esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
 
     std::string result = std::string(ipaddr_ntoa(&target_addr)) + " seq=" + std::to_string(seq) + " time=" + std::to_string(elapsed) + "ms";
-    if (ctx->is_baidu) {
-        s_ping_baidu = result;
-        notify_status("Baidu: " + result);
-    } else {
-        s_ping_google = result;
-        notify_status("Google: " + result);
-    }
+    notify_status(std::string(ctx->is_baidu ? "Baidu" : "Google") + ": " + result);
 }
 
 static void ping_end(esp_ping_handle_t hdl, void* args) {
@@ -335,8 +313,6 @@ static bool resolve_host_prefer_ipv6(const char* host, ip_addr_t* target) {
 static void run_ping(const char* host, bool is_baidu) {
     ip_addr_t target_addr;
     if (!resolve_host_prefer_ipv6(host, &target_addr)) {
-        if (is_baidu) s_ping_baidu = "resolve failed";
-        else s_ping_google = "resolve failed";
         notify_status(std::string(host) + " resolve failed");
         return;
     }
@@ -360,15 +336,9 @@ static void run_ping(const char* host, bool is_baidu) {
 }
 
 void run_connectivity_test() {
-    s_ping_baidu = "testing...";
-    s_ping_google = "testing...";
     notify_status("Running connectivity test...");
     run_ping("www.baidu.com", true);
     run_ping("www.google.com", false);
-
-    if (s_conn_cb) {
-        s_conn_cb({s_sta_connected, s_sta_ssid, get_sta_ip(), 0, s_ping_baidu, s_ping_google});
-    }
 }
 
 }
