@@ -383,9 +383,13 @@
         if (await saveConfig('/api/wifi/delete', { ssid }, 'logs.wifi_deleted', 'logs.save_wifi_failed')) loadWifiList();
     }
 
-    async function connectWifi(ssid, password) {
+    async function connectWifi(ssid, password, saveAfter = false) {
         addLog(`${t('logs.connecting_wifi')}: ${ssid}`);
-        await saveConfig('/api/wifi/connect', { ssid, password }, 'logs.connect_started', 'logs.connect_failed');
+        const ok = await saveConfig('/api/wifi/connect', { ssid, password }, 'logs.connect_started', 'logs.connect_failed');
+        if (ok && saveAfter) {
+            await saveConfig('/api/wifi/add', { ssid, password }, 'logs.wifi_saved', 'logs.save_wifi_failed');
+            loadWifiList();
+        }
     }
 
     async function scanWifi() {
@@ -417,11 +421,11 @@
 
     function promptConnectScanned(ssid, auth) {
         if (auth === 'OPEN') {
-            connectWifi(ssid, '');
+            connectWifi(ssid, '', true);
         } else {
             const password = prompt(`${t('settings.wifi.password')} (${ssid})`, '');
             if (password === null) return;
-            connectWifi(ssid, password);
+            connectWifi(ssid, password, true);
         }
     }
 
