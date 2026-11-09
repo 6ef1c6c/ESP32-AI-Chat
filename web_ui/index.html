@@ -24,6 +24,7 @@
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                         </button>
                         <span class="chat-title" id="chat-title" data-i18n="chat.sidebar_title">会话</span>
+                        <select id="model-select" class="model-select"></select>
                     </div>
 
                     <div class="chat-drawer" id="chat-drawer">
@@ -134,6 +135,12 @@
 
                     <div class="settings-group glass-card">
                         <h3 data-i18n="settings.ai.title">AI 配置</h3>
+                        <div class="ai-profiles" id="ai-profiles"></div>
+                        <h4 class="sub-title" data-i18n="settings.ai.add_title">添加模型</h4>
+                        <div class="input-item">
+                            <span data-i18n="settings.ai.name">名称</span>
+                            <input type="text" id="ai-name" data-i18n-placeholder="settings.ai.name_placeholder" placeholder="例如 OpenAI">
+                        </div>
                         <div class="input-item">
                             <span data-i18n="settings.ai.api_url">API 地址</span>
                             <input type="text" id="ai-api-url" data-i18n-placeholder="settings.ai.api_url_placeholder" placeholder="https://api.example.com/v1/chat/completions">
@@ -143,10 +150,14 @@
                             <input type="text" id="ai-api-key" data-i18n-placeholder="settings.ai.api_key_placeholder" placeholder="输入 API Key">
                         </div>
                         <div class="input-item">
+                            <span data-i18n="settings.ai.model">模型</span>
+                            <input type="text" id="ai-model" data-i18n-placeholder="settings.ai.model_placeholder" placeholder="输入模型名称">
+                        </div>
+                        <div class="input-item">
                             <span data-i18n="settings.ai.personality">人格设置</span>
                             <textarea id="ai-personality" data-i18n-placeholder="settings.ai.personality_placeholder" placeholder="输入系统提示词 / 人格设定"></textarea>
                         </div>
-                        <button class="btn-primary" id="btn-save-ai" data-i18n="settings.ai.save_btn">保存 AI 配置</button>
+                        <button class="btn-primary" id="btn-save-ai" data-i18n="settings.ai.save_btn">添加模型</button>
                     </div>
 
                     <div class="settings-group glass-card">
@@ -173,6 +184,12 @@
                             <input type="number" id="rgb-pin" placeholder="8" min="0" max="48">
                         </div>
                         <button class="btn-primary" id="btn-save-rgb" data-i18n="settings.rgb.save_btn">保存 RGB 设置</button>
+                    </div>
+
+                    <div class="settings-group glass-card">
+                        <h3 data-i18n="settings.system.title">系统</h3>
+                        <button class="btn-secondary" id="btn-reboot" data-i18n="settings.system.reboot">重启设备</button>
+                        <button class="btn-danger" id="btn-factory-reset" data-i18n="settings.system.factory_reset">恢复出厂设置</button>
                     </div>
 
                 </div>

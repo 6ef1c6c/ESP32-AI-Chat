@@ -30,7 +30,15 @@
             'settings.network.connected': '已连接', 'settings.network.disconnected': '未连接',
             'settings.ai.title': 'AI 配置', 'settings.ai.api_url': 'API 地址', 'settings.ai.api_url_placeholder': 'https://api.example.com/v1/chat/completions',
             'settings.ai.api_key': 'API Key', 'settings.ai.api_key_placeholder': '输入 API Key',
-            'settings.ai.personality': '人格设置', 'settings.ai.personality_placeholder': '输入系统提示词 / 人格设定', 'settings.ai.save_btn': '保存 AI 配置',
+            'settings.ai.model': '模型', 'settings.ai.model_placeholder': '输入模型名称',
+            'settings.ai.name': '名称', 'settings.ai.name_placeholder': '例如 OpenAI',
+            'settings.ai.personality': '人格设置', 'settings.ai.personality_placeholder': '输入系统提示词 / 人格设定',
+            'settings.ai.save_btn': '添加模型', 'settings.ai.use': '使用', 'settings.ai.add_title': '添加模型',
+            'settings.ai.empty_profiles': '暂无模型配置', 'settings.ai.fill_all': '请填写名称、API 地址、API Key 和模型',
+            'settings.ai.delete_confirm': '确定删除这个模型配置吗？',
+            'chat.no_model': '没有可用的 AI 模型，请先在设置中添加模型。',
+            'settings.system.title': '系统', 'settings.system.reboot': '重启设备', 'settings.system.factory_reset': '恢复出厂设置',
+            'logs.reboot': '设备重启中...', 'logs.factory_reset': '恢复出厂设置中...', 'logs.reboot_confirm': '确定要重启设备吗？', 'logs.factory_reset_confirm': '确定要恢复出厂设置吗？所有数据将被清除。',
             'settings.log.title': '日志等级', 'settings.log.off': '关闭', 'settings.log.error': 'Error', 'settings.log.info': 'Info', 'settings.log.debug': 'Debug',
             'settings.wifi.title': 'WiFi 连接', 'settings.wifi.ssid': 'WiFi 名称', 'settings.wifi.ssid_placeholder': '输入 WiFi SSID',
             'settings.wifi.password': '密码', 'settings.wifi.password_placeholder': '输入密码',
@@ -70,7 +78,15 @@
             'settings.network.connected': 'Connected', 'settings.network.disconnected': 'Disconnected',
             'settings.ai.title': 'AI Config', 'settings.ai.api_url': 'API URL', 'settings.ai.api_url_placeholder': 'https://api.example.com/v1/chat/completions',
             'settings.ai.api_key': 'API Key', 'settings.ai.api_key_placeholder': 'Enter API Key',
-            'settings.ai.personality': 'Personality', 'settings.ai.personality_placeholder': 'Enter system prompt / personality', 'settings.ai.save_btn': 'Save AI Config',
+            'settings.ai.model': 'Model', 'settings.ai.model_placeholder': 'Enter model name',
+            'settings.ai.name': 'Name', 'settings.ai.name_placeholder': 'e.g. OpenAI',
+            'settings.ai.personality': 'Personality', 'settings.ai.personality_placeholder': 'Enter system prompt / personality',
+            'settings.ai.save_btn': 'Add Model', 'settings.ai.use': 'Use', 'settings.ai.add_title': 'Add Model',
+            'settings.ai.empty_profiles': 'No models configured', 'settings.ai.fill_all': 'Please fill name, API URL, API Key and model',
+            'settings.ai.delete_confirm': 'Delete this model config?',
+            'chat.no_model': 'No AI model available. Please add one in settings.',
+            'settings.system.title': 'System', 'settings.system.reboot': 'Reboot Device', 'settings.system.factory_reset': 'Factory Reset',
+            'logs.reboot': 'Rebooting...', 'logs.factory_reset': 'Factory resetting...', 'logs.reboot_confirm': 'Reboot device?', 'logs.factory_reset_confirm': 'Factory reset? All data will be lost.',
             'settings.log.title': 'Log Level', 'settings.log.off': 'Off', 'settings.log.error': 'Error', 'settings.log.info': 'Info', 'settings.log.debug': 'Debug',
             'settings.wifi.title': 'WiFi Connection', 'settings.wifi.ssid': 'WiFi Name', 'settings.wifi.ssid_placeholder': 'Enter WiFi SSID',
             'settings.wifi.password': 'Password', 'settings.wifi.password_placeholder': 'Enter password',
@@ -328,13 +344,94 @@
         }
     }
 
-    function sendChat() {
+    function addStreamingMessageToDOM() {
+        const msg = document.createElement('div');
+        msg.className = 'message bot streaming';
+        msg.innerHTML = `<div class="message-bubble"></div><div class="message-time">${getTimeString()}</div>`;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msg.querySelector('.message-bubble');
+    }
+
+    function updateStreamingMessage(bubble, text) {
+        bubble.textContent = text;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function buildMessagesForAPI() {
+        const messages = [];
+        const active = aiProfiles.find(p => p.id === aiActiveId);
+        const personality = active ? active.personality : '';
+        if (personality) messages.push({ role: 'system', content: personality });
+        chats[currentChatId].messages.forEach(m => {
+            if (m.sender === 'user') messages.push({ role: 'user', content: m.text });
+            else if (m.sender === 'bot') messages.push({ role: 'assistant', content: m.text });
+        });
+        return messages;
+    }
+
+    async function sendChat() {
         const text = chatInput.value.trim();
-        if (!text || !currentChatId) return;
+        if (!text) return;
+        if (!currentChatId) createChat();
+        if (!currentChatId) return;
         addMessageToDOM(text, 'user');
         chatInput.value = '';
         addLog(t('logs.send_msg'));
-        setTimeout(() => addMessageToDOM(t('ai.reply'), 'bot'), 600);
+
+        if (aiProfiles.length === 0 || !aiActiveId) {
+            addMessageToDOM(t('chat.no_model'), 'bot');
+            return;
+        }
+
+        chatSend.disabled = true;
+        const bubble = addStreamingMessageToDOM();
+
+        try {
+            const response = await fetch('/api/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentChatId, messages: buildMessagesForAPI() })
+            });
+            if (!response.ok || !response.body) throw new Error('Stream request failed');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullReply = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const events = buffer.split('\n\n');
+                buffer = events.pop();
+                for (const event of events) {
+                    const lines = event.split('\n');
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+                        fullReply += data;
+                        updateStreamingMessage(bubble, fullReply);
+                    }
+                }
+            }
+
+            bubble.parentElement.classList.remove('streaming');
+            const reply = fullReply || t('ai.reply');
+            bubble.textContent = reply;
+            chats[currentChatId].messages.push({ text: reply, sender: 'bot', time: getTimeString() });
+            await saveCurrentChat();
+        } catch (e) {
+            bubble.parentElement.classList.remove('streaming');
+            bubble.textContent = t('ai.reply');
+            chats[currentChatId].messages.push({ text: t('ai.reply'), sender: 'bot', time: getTimeString() });
+            await saveCurrentChat();
+            addLog('AI stream failed', 'error');
+        } finally {
+            chatSend.disabled = false;
+        }
     }
 
     chatSend.addEventListener('click', sendChat);
@@ -432,41 +529,108 @@
     btnAddWifi.addEventListener('click', addWifi);
     btnScanWifi.addEventListener('click', scanWifi);
 
+    const aiName = document.getElementById('ai-name');
     const aiApiUrl = document.getElementById('ai-api-url');
     const aiApiKey = document.getElementById('ai-api-key');
+    const aiModel = document.getElementById('ai-model');
     const aiPersonality = document.getElementById('ai-personality');
+    const aiProfilesEl = document.getElementById('ai-profiles');
     const btnSaveAi = document.getElementById('btn-save-ai');
-    let savedApiKey = '';
+    const modelSelect = document.getElementById('model-select');
+
+    let aiProfiles = [];
+    let aiActiveId = '';
 
     function maskKey(key) {
         if (!key || key.length <= 12) return key;
         return key.slice(0, 6) + '*'.repeat(10) + key.slice(-5);
     }
 
-    async function loadAiConfig() {
-        await loadConfig('/api/ai', cfg => {
-            aiApiUrl.value = cfg.api_url || '';
-            savedApiKey = cfg.api_key || '';
-            aiApiKey.value = maskKey(savedApiKey);
-            aiPersonality.value = cfg.personality || '';
+    async function loadAiProfiles() {
+        await loadConfig('/api/ai/profiles', data => {
+            aiProfiles = data.profiles || [];
+            aiActiveId = data.active || (aiProfiles[0]?.id || '');
+            renderAiProfiles();
+            updateModelSelect();
         }, 'logs.load_ai_failed');
     }
 
-    async function saveAiConfig() {
-        const inputValue = aiApiKey.value;
-        const apiKey = (inputValue === maskKey(savedApiKey)) ? savedApiKey : inputValue.trim();
-        const ok = await saveConfig('/api/ai', {
-            api_url: aiApiUrl.value.trim(),
-            api_key: apiKey,
-            personality: aiPersonality.value.trim()
-        }, 'logs.ai_saved', 'logs.ai_save_failed');
-        if (ok) {
-            savedApiKey = apiKey;
-            aiApiKey.value = maskKey(savedApiKey);
+    async function saveAiProfiles(profiles) {
+        return await saveConfig('/api/ai/profiles', { profiles }, 'logs.ai_saved', 'logs.ai_save_failed');
+    }
+
+    async function setActiveProfile(id) {
+        if (await saveConfig('/api/ai/active', { id }, 'logs.ai_saved', 'logs.ai_save_failed')) {
+            aiActiveId = id;
+            renderAiProfiles();
+            updateModelSelect();
         }
     }
 
-    btnSaveAi.addEventListener('click', saveAiConfig);
+    function updateModelSelect() {
+        modelSelect.innerHTML = '';
+        aiProfiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            opt.selected = p.id === aiActiveId;
+            modelSelect.appendChild(opt);
+        });
+    }
+
+    function renderAiProfiles() {
+        aiProfilesEl.innerHTML = '';
+        if (aiProfiles.length === 0) {
+            aiProfilesEl.innerHTML = `<div class="wifi-empty">${t('settings.ai.empty_profiles')}</div>`;
+            return;
+        }
+        aiProfiles.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'ai-profile-item';
+            item.innerHTML = `<div class="ai-profile-info"><span class="ai-profile-name">${escapeHtml(p.name)} ${p.id === aiActiveId ? '✓' : ''}</span><span class="ai-profile-meta">${escapeHtml(p.model)} @ ${escapeHtml(p.api_url)}</span></div><div class="ai-profile-actions"><button class="btn-active">${t('settings.ai.use')}</button><button class="btn-delete">${t('wifi.delete')}</button></div>`;
+            item.querySelector('.btn-active').addEventListener('click', () => setActiveProfile(p.id));
+            item.querySelector('.btn-delete').addEventListener('click', () => deleteProfile(p.id));
+            aiProfilesEl.appendChild(item);
+        });
+    }
+
+    async function deleteProfile(id) {
+        if (!confirm(t('settings.ai.delete_confirm'))) return;
+        if ((await apiPost('/api/ai/profiles/delete', { id })).success) {
+            aiProfiles = aiProfiles.filter(p => p.id !== id);
+            if (aiActiveId === id) aiActiveId = aiProfiles[0]?.id || '';
+            renderAiProfiles();
+            updateModelSelect();
+            if (aiActiveId) await setActiveProfile(aiActiveId);
+        }
+    }
+
+    async function addProfile() {
+        const name = aiName.value.trim();
+        const url = aiApiUrl.value.trim();
+        const key = aiApiKey.value.trim();
+        const model = aiModel.value.trim();
+        const personality = aiPersonality.value.trim();
+        if (!name || !url || !key || !model) return alert(t('settings.ai.fill_all'));
+
+        const newProfile = { id: generateId(), name, api_url: url, api_key: key, model, personality };
+        aiProfiles.push(newProfile);
+        if (await saveAiProfiles(aiProfiles)) {
+            aiName.value = '';
+            aiApiUrl.value = '';
+            aiApiKey.value = '';
+            aiModel.value = '';
+            aiPersonality.value = '';
+            if (!aiActiveId) aiActiveId = newProfile.id;
+            renderAiProfiles();
+            updateModelSelect();
+        } else {
+            aiProfiles.pop();
+        }
+    }
+
+    modelSelect.addEventListener('change', () => setActiveProfile(modelSelect.value));
+    btnSaveAi.addEventListener('click', addProfile);
 
     const rgbModeButtons = document.querySelectorAll('.rgb-btn');
     const rgbPinInput = document.getElementById('rgb-pin');
@@ -548,6 +712,8 @@
     const apPassword = document.getElementById('ap-password');
     const btnSaveAp = document.getElementById('btn-save-ap');
     const btnToggleAp = document.getElementById('btn-toggle-ap');
+    const btnReboot = document.getElementById('btn-reboot');
+    const btnFactoryReset = document.getElementById('btn-factory-reset');
     const headerStatus = document.getElementById('header-status');
 
     let lastStatus = {};
@@ -579,6 +745,22 @@
 
     btnSaveAp.addEventListener('click', saveAp);
 
+    if (btnReboot) {
+        btnReboot.addEventListener('click', async () => {
+            if (!confirm(t('logs.reboot_confirm'))) return;
+            addLog(t('logs.reboot'));
+            try { await apiPost('/api/reboot', {}); } catch (e) {}
+        });
+    }
+
+    if (btnFactoryReset) {
+        btnFactoryReset.addEventListener('click', async () => {
+            if (!confirm(t('logs.factory_reset_confirm'))) return;
+            addLog(t('logs.factory_reset'));
+            try { await apiPost('/api/factory_reset', {}); } catch (e) {}
+        });
+    }
+
     if (btnToggleAp) {
         btnToggleAp.addEventListener('click', () => {
             const isHidden = apPassword.type === 'password';
@@ -594,7 +776,7 @@
         addLog(t('logs.ui_loaded'));
         await loadStatus();
         await loadSystemStatus();
-        await loadAiConfig();
+        await loadAiProfiles();
         await loadLogLevel();
         await loadRgbConfig();
         await loadWifiList();

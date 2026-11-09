@@ -5,8 +5,12 @@
 #include "rgb_led.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "esp_http_client.h"
+#include "esp_system.h"
 #include "cJSON.h"
 #include <string>
+#include <cstring>
+#include <algorithm>
 
 static const char* TAG = "web_server";
 
@@ -129,12 +133,30 @@ static esp_err_t api_lang_set(httpd_req_t* req) {
     return send_success(req, ok);
 }
 
+static cJSON* profile_to_json(const storage::AIProfile& p, bool mask_key) {
+    cJSON* obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "id", p.id.c_str());
+    cJSON_AddStringToObject(obj, "name", p.name.c_str());
+    cJSON_AddStringToObject(obj, "api_url", p.api_url.c_str());
+    if (mask_key && p.api_key.length() > 12) {
+        std::string masked = p.api_key.substr(0, 6) + std::string(10, '*') + p.api_key.substr(p.api_key.length() - 5);
+        cJSON_AddStringToObject(obj, "api_key", masked.c_str());
+    } else {
+        cJSON_AddStringToObject(obj, "api_key", p.api_key.c_str());
+    }
+    cJSON_AddStringToObject(obj, "model", p.model.c_str());
+    cJSON_AddStringToObject(obj, "personality", p.personality.c_str());
+    return obj;
+}
+
 static esp_err_t api_ai_get(httpd_req_t* req) {
-    auto cfg = storage::load_ai_config();
+    auto profiles = storage::load_ai_profiles();
+    std::string active = storage::load_ai_active();
     cJSON* root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "api_url", cfg.api_url.c_str());
-    cJSON_AddStringToObject(root, "api_key", cfg.api_key.c_str());
-    cJSON_AddStringToObject(root, "personality", cfg.personality.c_str());
+    cJSON* arr = cJSON_CreateArray();
+    for (const auto& p : profiles) arr = cJSON_AddItemToArray(arr, profile_to_json(p, false));
+    cJSON_AddItemToObject(root, "profiles", arr);
+    cJSON_AddStringToObject(root, "active", active.c_str());
     esp_err_t ret = send_json(req, root);
     cJSON_Delete(root);
     return ret;
@@ -147,13 +169,114 @@ static esp_err_t api_ai_set(httpd_req_t* req) {
     storage::AIConfig cfg;
     cJSON* url = cJSON_GetObjectItem(root, "api_url");
     cJSON* key = cJSON_GetObjectItem(root, "api_key");
+    cJSON* model = cJSON_GetObjectItem(root, "model");
     cJSON* per = cJSON_GetObjectItem(root, "personality");
     if (url && cJSON_IsString(url)) cfg.api_url = url->valuestring;
     if (key && cJSON_IsString(key)) cfg.api_key = key->valuestring;
+    if (model && cJSON_IsString(model)) cfg.model = model->valuestring;
     if (per && cJSON_IsString(per)) cfg.personality = per->valuestring;
 
     bool ok = storage::save_ai_config(cfg);
     if (ok) log("AI config saved: " + cfg.api_url);
+    cJSON_Delete(root);
+    return send_success(req, ok);
+}
+
+static esp_err_t api_ai_profiles_get(httpd_req_t* req) {
+    auto profiles = storage::load_ai_profiles();
+    std::string active = storage::load_ai_active();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* arr = cJSON_CreateArray();
+    for (const auto& p : profiles) arr = cJSON_AddItemToArray(arr, profile_to_json(p, true));
+    cJSON_AddItemToObject(root, "profiles", arr);
+    cJSON_AddStringToObject(root, "active", active.c_str());
+    esp_err_t ret = send_json(req, root);
+    cJSON_Delete(root);
+    return ret;
+}
+
+static esp_err_t api_ai_profiles_set(httpd_req_t* req) {
+    cJSON* root = get_json_body(req);
+    if (!root) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+
+    cJSON* profiles_json = cJSON_GetObjectItem(root, "profiles");
+    if (!profiles_json || !cJSON_IsArray(profiles_json)) {
+        cJSON_Delete(root);
+        return send_success(req, false);
+    }
+
+    auto existing = storage::load_ai_profiles();
+    std::vector<storage::AIProfile> profiles;
+    int n = cJSON_GetArraySize(profiles_json);
+    for (int i = 0; i < n; i++) {
+        cJSON* obj = cJSON_GetArrayItem(profiles_json, i);
+        storage::AIProfile p;
+        cJSON* id = cJSON_GetObjectItem(obj, "id");
+        cJSON* name = cJSON_GetObjectItem(obj, "name");
+        cJSON* url = cJSON_GetObjectItem(obj, "api_url");
+        cJSON* key = cJSON_GetObjectItem(obj, "api_key");
+        cJSON* model = cJSON_GetObjectItem(obj, "model");
+        cJSON* per = cJSON_GetObjectItem(obj, "personality");
+        if (id && cJSON_IsString(id)) p.id = id->valuestring;
+        if (name && cJSON_IsString(name)) p.name = name->valuestring;
+        if (url && cJSON_IsString(url)) p.api_url = url->valuestring;
+        if (key && cJSON_IsString(key)) {
+            std::string key_val = key->valuestring;
+            if (key_val.find("******") != std::string::npos) {
+                for (const auto& e : existing) {
+                    if (e.id == p.id) { key_val = e.api_key; break; }
+                }
+            }
+            p.api_key = key_val;
+        }
+        if (model && cJSON_IsString(model)) p.model = model->valuestring;
+        if (per && cJSON_IsString(per)) p.personality = per->valuestring;
+        if (p.id.empty()) p.id = std::to_string(esp_random());
+        if (p.name.empty()) p.name = p.model.empty() ? "Profile" : p.model;
+        profiles.push_back(p);
+    }
+
+    bool ok = storage::save_ai_profiles(profiles);
+    if (ok) log("AI profiles saved: " + std::to_string(profiles.size()));
+    cJSON_Delete(root);
+    return send_success(req, ok);
+}
+
+static esp_err_t api_ai_profiles_delete(httpd_req_t* req) {
+    cJSON* root = get_json_body(req);
+    if (!root) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+
+    cJSON* id = cJSON_GetObjectItem(root, "id");
+    bool ok = (id && cJSON_IsString(id));
+    if (ok) {
+        auto profiles = storage::load_ai_profiles();
+        profiles.erase(std::remove_if(profiles.begin(), profiles.end(),
+            [&](const storage::AIProfile& p) { return p.id == id->valuestring; }), profiles.end());
+        ok = storage::save_ai_profiles(profiles);
+        if (ok) log("AI profile deleted: " + std::string(id->valuestring));
+    }
+    cJSON_Delete(root);
+    return send_success(req, ok);
+}
+
+static esp_err_t api_ai_active_get(httpd_req_t* req) {
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "id", storage::load_ai_active().c_str());
+    esp_err_t ret = send_json(req, root);
+    cJSON_Delete(root);
+    return ret;
+}
+
+static esp_err_t api_ai_active_set(httpd_req_t* req) {
+    cJSON* root = get_json_body(req);
+    if (!root) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+
+    cJSON* id = cJSON_GetObjectItem(root, "id");
+    bool ok = (id && cJSON_IsString(id));
+    if (ok) {
+        ok = storage::save_ai_active(id->valuestring);
+        if (ok) log("AI active profile: " + std::string(id->valuestring));
+    }
     cJSON_Delete(root);
     return send_success(req, ok);
 }
@@ -412,6 +535,157 @@ static esp_err_t api_chat_delete(httpd_req_t* req) {
     return send_success(req, ok);
 }
 
+static esp_err_t api_reboot(httpd_req_t* req) {
+    log("Reboot requested");
+    send_success(req, true);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+}
+
+static esp_err_t api_factory_reset(httpd_req_t* req) {
+    log("Factory reset requested");
+    bool ok = storage::factory_reset();
+    send_success(req, ok);
+    if (ok) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
+    }
+    return ESP_OK;
+}
+
+static esp_err_t api_chat_stream(httpd_req_t* req) {
+    cJSON* root = get_json_body(req);
+    if (!root) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+
+    cJSON* id = cJSON_GetObjectItem(root, "id");
+    cJSON* messages = cJSON_GetObjectItem(root, "messages");
+    if (!id || !cJSON_IsString(id) || !messages || !cJSON_IsArray(messages)) {
+        cJSON_Delete(root);
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing fields");
+    }
+
+    auto profiles = storage::load_ai_profiles();
+    std::string active_id = storage::load_ai_active();
+    storage::AIProfile profile;
+    bool found = false;
+    for (const auto& p : profiles) {
+        if (p.id == active_id) { profile = p; found = true; break; }
+    }
+    if (!found && !profiles.empty()) { profile = profiles[0]; active_id = profile.id; }
+    if (!found && profiles.empty()) {
+        cJSON_Delete(root);
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "AI not configured");
+    }
+    if (profile.api_url.empty() || profile.api_key.empty() || profile.model.empty()) {
+        cJSON_Delete(root);
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "AI not configured");
+    }
+
+    cJSON* body = cJSON_CreateObject();
+    cJSON_AddStringToObject(body, "model", profile.model.c_str());
+    cJSON_AddNumberToObject(body, "temperature", 0.7);
+    cJSON_AddItemReferenceToObject(body, "messages", messages);
+    cJSON_AddBoolToObject(body, "stream", true);
+    char* post_data = cJSON_PrintUnformatted(body);
+    cJSON_Delete(body);
+
+    int post_len = strlen(post_data);
+    std::string auth_header = "Bearer " + profile.api_key;
+
+    esp_http_client_config_t client_cfg = {};
+    client_cfg.url = profile.api_url.c_str();
+    client_cfg.method = HTTP_METHOD_POST;
+    client_cfg.timeout_ms = 60000;
+    client_cfg.buffer_size = 2048;
+    client_cfg.buffer_size_tx = 4096;
+
+    esp_http_client_handle_t client = esp_http_client_init(&client_cfg);
+    if (!client) {
+        free(post_data);
+        cJSON_Delete(root);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "HTTP client init failed");
+    }
+
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_header(client, "Authorization", auth_header.c_str());
+    esp_http_client_set_post_field(client, post_data, post_len);
+
+    esp_err_t err = esp_http_client_open(client, -1);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "AI connection failed: %s", esp_err_to_name(err));
+        free(post_data);
+        cJSON_Delete(root);
+        esp_http_client_cleanup(client);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to connect to AI");
+    }
+
+    esp_http_client_fetch_headers(client);
+    int status = esp_http_client_get_status_code(client);
+    if (status != 200) {
+        ESP_LOGE(TAG, "AI API returned %d", status);
+        free(post_data);
+        cJSON_Delete(root);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "AI API error");
+    }
+
+    httpd_resp_set_type(req, "text/event-stream");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-transform");
+    httpd_resp_set_hdr(req, "Connection", "keep-alive");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+
+    char buffer[512];
+    std::string line_buffer;
+    int read_len;
+
+    while ((read_len = esp_http_client_read(client, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[read_len] = '\0';
+        line_buffer += buffer;
+
+        size_t pos;
+        while ((pos = line_buffer.find('\n')) != std::string::npos) {
+            std::string line = line_buffer.substr(0, pos);
+            line_buffer.erase(0, pos + 1);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+
+            if (line.substr(0, 6) == "data: ") {
+                std::string data = line.substr(6);
+                if (data == "[DONE]") {
+                    httpd_resp_sendstr_chunk(req, "data: [DONE]\n\n");
+                    continue;
+                }
+
+                cJSON* chunk = cJSON_Parse(data.c_str());
+                if (chunk) {
+                    cJSON* choices = cJSON_GetObjectItem(chunk, "choices");
+                    if (choices && cJSON_GetArraySize(choices) > 0) {
+                        cJSON* choice = cJSON_GetArrayItem(choices, 0);
+                        cJSON* delta = cJSON_GetObjectItem(choice, "delta");
+                        if (delta) {
+                            cJSON* content = cJSON_GetObjectItem(delta, "content");
+                            if (content && cJSON_IsString(content) && content->valuestring) {
+                                std::string sse = "data: " + std::string(content->valuestring) + "\n\n";
+                                httpd_resp_sendstr_chunk(req, sse.c_str());
+                            }
+                        }
+                    }
+                    cJSON_Delete(chunk);
+                }
+            }
+        }
+    }
+
+    httpd_resp_sendstr_chunk(req, nullptr);
+    free(post_data);
+    cJSON_Delete(root);
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    return ESP_OK;
+}
+
 static const httpd_uri_t routes[] = {
     { "/", HTTP_GET, handler_index, nullptr },
     { "/style.css", HTTP_GET, handler_css, nullptr },
@@ -421,6 +695,11 @@ static const httpd_uri_t routes[] = {
     { "/api/lang/set", HTTP_POST, api_lang_set, nullptr },
     { "/api/ai", HTTP_GET, api_ai_get, nullptr },
     { "/api/ai", HTTP_POST, api_ai_set, nullptr },
+    { "/api/ai/profiles", HTTP_GET, api_ai_profiles_get, nullptr },
+    { "/api/ai/profiles", HTTP_POST, api_ai_profiles_set, nullptr },
+    { "/api/ai/profiles/delete", HTTP_POST, api_ai_profiles_delete, nullptr },
+    { "/api/ai/active", HTTP_GET, api_ai_active_get, nullptr },
+    { "/api/ai/active", HTTP_POST, api_ai_active_set, nullptr },
     { "/api/log_level", HTTP_GET, api_log_level_get, nullptr },
     { "/api/log_level", HTTP_POST, api_log_level_set, nullptr },
     { "/api/system_status", HTTP_GET, api_system_status, nullptr },
@@ -436,6 +715,9 @@ static const httpd_uri_t routes[] = {
     { "/api/chat/get", HTTP_GET, api_chat_get, nullptr },
     { "/api/chat/save", HTTP_POST, api_chat_save, nullptr },
     { "/api/chat/delete", HTTP_POST, api_chat_delete, nullptr },
+    { "/api/chat/stream", HTTP_POST, api_chat_stream, nullptr },
+    { "/api/reboot", HTTP_POST, api_reboot, nullptr },
+    { "/api/factory_reset", HTTP_POST, api_factory_reset, nullptr },
 };
 
 namespace web {
@@ -444,8 +726,8 @@ bool start(LogCallback log_cb) {
     s_log_cb = log_cb;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 8192;
-    config.max_uri_handlers = 24;
+    config.stack_size = 16384;
+    config.max_uri_handlers = 32;
     config.uri_match_fn = httpd_uri_match_wildcard;
 
     if (httpd_start(&s_server, &config) != ESP_OK) {

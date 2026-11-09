@@ -19,6 +19,16 @@ struct APConfig {
 struct AIConfig {
     std::string api_url;
     std::string api_key;
+    std::string model;
+    std::string personality;
+};
+
+struct AIProfile {
+    std::string id;
+    std::string name;
+    std::string api_url;
+    std::string api_key;
+    std::string model;
     std::string personality;
 };
 
@@ -44,6 +54,10 @@ bool save_language(const std::string& lang);
 std::string load_language();
 bool save_ai_config(const AIConfig& cfg);
 AIConfig load_ai_config();
+bool save_ai_profiles(const std::vector<AIProfile>& profiles);
+std::vector<AIProfile> load_ai_profiles();
+bool save_ai_active(const std::string& id);
+std::string load_ai_active();
 bool save_log_level(LogLevel level);
 LogLevel load_log_level();
 bool save_rgb_config(const RGBConfig& cfg);
@@ -58,5 +72,7 @@ bool chat_save(const std::string& chat_id, const std::string& json_data);
 std::string chat_load(const std::string& chat_id);
 std::vector<ChatInfo> chat_list();
 bool chat_delete(const std::string& chat_id);
+
+bool factory_reset();
 
 }

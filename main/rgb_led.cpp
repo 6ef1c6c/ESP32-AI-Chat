@@ -12,27 +12,6 @@ static int s_current_pin = -1;
 static TaskHandle_t s_task = nullptr;
 static bool s_running = false;
 
-static uint8_t hue_to_rgb(float p, float q, float t) {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1.0f / 6.0f) return (uint8_t)((p + (q - p) * 6.0f * t) * 255);
-    if (t < 1.0f / 2.0f) return (uint8_t)(q * 255);
-    if (t < 2.0f / 3.0f) return (uint8_t)((p + (q - p) * (2.0f / 3.0f - t) * 6.0f) * 255);
-    return (uint8_t)(p * 255);
-}
-
-static void hsv_to_rgb(uint16_t h, uint8_t s, uint8_t v, uint8_t& r, uint8_t& g, uint8_t& b) {
-    float hf = h / 360.0f;
-    float sf = s / 255.0f;
-    float vf = v / 255.0f;
-    float q = vf < 0.5f ? vf * (1.0f + sf) : vf + sf - vf * sf;
-    float p = 2.0f * vf - q;
-
-    r = hue_to_rgb(p, q, hf + 1.0f / 3.0f);
-    g = hue_to_rgb(p, q, hf);
-    b = hue_to_rgb(p, q, hf - 1.0f / 3.0f);
-}
-
 static void update_led(uint8_t r, uint8_t g, uint8_t b) {
     if (!s_strip) return;
     led_strip_set_pixel(s_strip, 0, r, g, b);
@@ -40,7 +19,6 @@ static void update_led(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 static void rgb_task(void* arg) {
-    uint16_t hue = 0;
     while (s_running) {
         switch (s_config.mode) {
             case rgb::Mode::OFF:
@@ -56,11 +34,19 @@ static void rgb_task(void* arg) {
                 update_led(0, 0, 255);
                 break;
             case rgb::Mode::GRADIENT: {
-                uint8_t r, g, b;
-                hsv_to_rgb(hue, 255, 255, r, g, b);
+                const uint32_t ms_per_phase = 3000;
+                uint32_t ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+                uint32_t t = ms % (ms_per_phase * 3);
+                uint8_t phase = t / ms_per_phase;
+                float ratio = (float)(t % ms_per_phase) / ms_per_phase;
+
+                uint8_t r = 0, g = 0, b = 0;
+                switch (phase) {
+                    case 0: r = (uint8_t)(255 * (1.0f - ratio)); g = (uint8_t)(255 * ratio); break;
+                    case 1: g = (uint8_t)(255 * (1.0f - ratio)); b = (uint8_t)(255 * ratio); break;
+                    case 2: b = (uint8_t)(255 * (1.0f - ratio)); r = (uint8_t)(255 * ratio); break;
+                }
                 update_led(r, g, b);
-                hue += 2;
-                if (hue >= 360) hue = 0;
                 break;
             }
         }

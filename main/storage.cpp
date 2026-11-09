@@ -14,6 +14,8 @@ static const char* KEY_WIFI_CREDS = "wifi_creds";
 static const char* KEY_AP_CONFIG = "ap_config";
 static const char* KEY_LANGUAGE = "language";
 static const char* KEY_AI_CONFIG = "ai_config";
+static const char* KEY_AI_PROFILES = "ai_profiles";
+static const char* KEY_AI_ACTIVE = "ai_active";
 static const char* KEY_LOG_LEVEL = "log_level";
 static const char* KEY_RGB_CONFIG = "rgb_config";
 
@@ -171,6 +173,7 @@ bool save_ai_config(const AIConfig& cfg) {
     cJSON* obj = cJSON_CreateObject();
     cJSON_AddStringToObject(obj, "api_url", cfg.api_url.c_str());
     cJSON_AddStringToObject(obj, "api_key", cfg.api_key.c_str());
+    cJSON_AddStringToObject(obj, "model", cfg.model.c_str());
     cJSON_AddStringToObject(obj, "personality", cfg.personality.c_str());
     bool ok = save_json(KEY_AI_CONFIG, obj);
     cJSON_Delete(obj);
@@ -183,13 +186,81 @@ AIConfig load_ai_config() {
     if (obj) {
         cJSON* url = cJSON_GetObjectItem(obj, "api_url");
         cJSON* key = cJSON_GetObjectItem(obj, "api_key");
+        cJSON* model = cJSON_GetObjectItem(obj, "model");
         cJSON* per = cJSON_GetObjectItem(obj, "personality");
         if (url) cfg.api_url = url->valuestring;
         if (key) cfg.api_key = key->valuestring;
+        if (model) cfg.model = model->valuestring;
         if (per) cfg.personality = per->valuestring;
         cJSON_Delete(obj);
     }
     return cfg;
+}
+
+bool save_ai_profiles(const std::vector<AIProfile>& profiles) {
+    cJSON* arr = cJSON_CreateArray();
+    for (const auto& p : profiles) {
+        cJSON* obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(obj, "id", p.id.c_str());
+        cJSON_AddStringToObject(obj, "name", p.name.c_str());
+        cJSON_AddStringToObject(obj, "api_url", p.api_url.c_str());
+        cJSON_AddStringToObject(obj, "api_key", p.api_key.c_str());
+        cJSON_AddStringToObject(obj, "model", p.model.c_str());
+        cJSON_AddStringToObject(obj, "personality", p.personality.c_str());
+        cJSON_AddItemToArray(arr, obj);
+    }
+    bool ok = save_json(KEY_AI_PROFILES, arr);
+    cJSON_Delete(arr);
+    return ok;
+}
+
+std::vector<AIProfile> load_ai_profiles() {
+    std::vector<AIProfile> result;
+    cJSON* arr = load_json(KEY_AI_PROFILES);
+    if (!arr) {
+        auto old = load_ai_config();
+        if (!old.api_url.empty() && !old.api_key.empty()) {
+            AIProfile p;
+            p.id = "default";
+            p.name = "Default";
+            p.api_url = old.api_url;
+            p.api_key = old.api_key;
+            p.model = old.model;
+            p.personality = old.personality;
+            result.push_back(p);
+            save_ai_profiles(result);
+            save_ai_active("default");
+        }
+        return result;
+    }
+    int n = cJSON_GetArraySize(arr);
+    for (int i = 0; i < n; i++) {
+        cJSON* obj = cJSON_GetArrayItem(arr, i);
+        AIProfile p;
+        cJSON* id = cJSON_GetObjectItem(obj, "id");
+        cJSON* name = cJSON_GetObjectItem(obj, "name");
+        cJSON* url = cJSON_GetObjectItem(obj, "api_url");
+        cJSON* key = cJSON_GetObjectItem(obj, "api_key");
+        cJSON* model = cJSON_GetObjectItem(obj, "model");
+        cJSON* per = cJSON_GetObjectItem(obj, "personality");
+        if (id) p.id = id->valuestring;
+        if (name) p.name = name->valuestring;
+        if (url) p.api_url = url->valuestring;
+        if (key) p.api_key = key->valuestring;
+        if (model) p.model = model->valuestring;
+        if (per) p.personality = per->valuestring;
+        result.push_back(p);
+    }
+    cJSON_Delete(arr);
+    return result;
+}
+
+bool save_ai_active(const std::string& id) {
+    return nvs_save_str(KEY_AI_ACTIVE, id.c_str());
+}
+
+std::string load_ai_active() {
+    return nvs_load_str(KEY_AI_ACTIVE);
 }
 
 bool save_log_level(LogLevel level) {
@@ -289,6 +360,21 @@ std::vector<ChatInfo> chat_list() {
 
 bool chat_delete(const std::string& chat_id) {
     return remove(chat_path(chat_id).c_str()) == 0;
+}
+
+bool factory_reset() {
+    esp_vfs_littlefs_unregister("littlefs");
+    esp_err_t ret = esp_littlefs_format("littlefs");
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "LittleFS format failed: %s", esp_err_to_name(ret));
+        return false;
+    }
+    ret = nvs_flash_erase();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "NVS erase failed: %s", esp_err_to_name(ret));
+        return false;
+    }
+    return true;
 }
 
 }
