@@ -24,7 +24,7 @@
             'logs.status_failed': 'Failed to get status', 'logs.system_status_failed': 'Failed to get system status',
             'logs.load_ai_failed': 'Failed to load AI config', 'logs.load_log_level_failed': 'Failed to load log level', 'logs.load_rgb_failed': 'Failed to load RGB settings',
             'settings.language.title': '语言 / Language',
-            'settings.status.title': '系统状态', 'settings.status.cpu': 'CPU 占用', 'settings.status.mem': '内存 占用', 'settings.status.flash': 'Flash 占用',
+            'settings.status.title': '系统状态', 'settings.status.cpu': 'CPU 占用', 'settings.status.mem': '内存 占用', 'settings.status.flash': 'Flash 占用', 'settings.status.temp': 'CPU 温度',
             'settings.rgb.title': 'RGB 灯', 'settings.rgb.red': '红', 'settings.rgb.green': '绿', 'settings.rgb.blue': '蓝', 'settings.rgb.gradient': '渐变', 'settings.rgb.off': '关闭', 'settings.rgb.pin': '数据引脚', 'settings.rgb.save_btn': '保存 RGB 设置',
             'settings.network.title': '网络状态', 'settings.network.sta_status': 'STA 状态', 'settings.network.sta_ip': 'STA IP',
             'settings.network.connected': '已连接', 'settings.network.disconnected': '未连接',
@@ -72,7 +72,7 @@
             'logs.status_failed': 'Failed to get status', 'logs.system_status_failed': 'Failed to get system status',
             'logs.load_ai_failed': 'Failed to load AI config', 'logs.load_log_level_failed': 'Failed to load log level', 'logs.load_rgb_failed': 'Failed to load RGB settings',
             'settings.language.title': 'Language / 语言',
-            'settings.status.title': 'System Status', 'settings.status.cpu': 'CPU Usage', 'settings.status.mem': 'Memory Usage', 'settings.status.flash': 'Flash Usage',
+            'settings.status.title': 'System Status', 'settings.status.cpu': 'CPU Usage', 'settings.status.mem': 'Memory Usage', 'settings.status.flash': 'Flash Usage', 'settings.status.temp': 'CPU Temp',
             'settings.rgb.title': 'RGB LED', 'settings.rgb.red': 'Red', 'settings.rgb.green': 'Green', 'settings.rgb.blue': 'Blue', 'settings.rgb.gradient': 'Gradient', 'settings.rgb.off': 'Off', 'settings.rgb.pin': 'Data Pin', 'settings.rgb.save_btn': 'Save RGB Settings',
             'settings.network.title': 'Network Status', 'settings.network.sta_status': 'STA Status', 'settings.network.sta_ip': 'STA IP',
             'settings.network.connected': 'Connected', 'settings.network.disconnected': 'Disconnected',
@@ -673,36 +673,53 @@
 
     const metricCpuValue = document.getElementById('metric-cpu-value');
     const metricCpuBar = document.getElementById('metric-cpu-bar');
+    const metricTempValue = document.getElementById('metric-temp-value');
+    const metricTempBar = document.getElementById('metric-temp-bar');
     const metricMemValue = document.getElementById('metric-mem-value');
     const metricMemBar = document.getElementById('metric-mem-bar');
     const metricFlashValue = document.getElementById('metric-flash-value');
     const metricFlashBar = document.getElementById('metric-flash-bar');
 
-    let lastFlashUpdate = 0;
-
     function updateProgressBar(bar, percent) {
-        bar.style.width = percent + '%';
+        if (!bar) return;
+        bar.style.width = Math.min(100, Math.max(0, percent)) + '%';
         bar.classList.remove('warning', 'danger');
         if (percent >= 90) bar.classList.add('danger');
         else if (percent >= 70) bar.classList.add('warning');
     }
 
+    function updateTempBar(bar, celsius) {
+        if (!bar) return;
+        const pct = Math.min(100, Math.max(0, celsius));
+        bar.style.width = pct + '%';
+        bar.classList.remove('warning', 'danger');
+        if (celsius >= 80) bar.classList.add('danger');
+        else if (celsius >= 60) bar.classList.add('warning');
+    }
+
+    function fmtPercent(v) {
+        return (typeof v === 'number' ? v.toFixed(1) : '-') + '%';
+    }
+
+    function fmtTemp(v) {
+        return (typeof v === 'number' ? v.toFixed(1) : '-') + '°C';
+    }
+
     async function loadSystemStatus() {
         try {
             const status = await apiGet('/api/system_status');
-            const now = Date.now();
 
-            metricCpuValue.textContent = status.cpu.percent + '%';
+            metricCpuValue.textContent = fmtPercent(status.cpu.percent);
             updateProgressBar(metricCpuBar, status.cpu.percent);
 
-            metricMemValue.textContent = status.mem.percent + '% (' + formatBytes(status.mem.free) + ' / ' + formatBytes(status.mem.total) + ')';
+            metricTempValue.textContent = fmtTemp(status.cpu.temp);
+            updateTempBar(metricTempBar, status.cpu.temp);
+
+            metricMemValue.textContent = fmtPercent(status.mem.percent) + ' (' + formatBytes(status.mem.free) + ' / ' + formatBytes(status.mem.total) + ')';
             updateProgressBar(metricMemBar, status.mem.percent);
 
-            if (now - lastFlashUpdate >= 300000) {
-                metricFlashValue.textContent = status.flash.percent + '% (' + formatBytes(status.flash.used) + ' / ' + formatBytes(status.flash.total) + ')';
-                updateProgressBar(metricFlashBar, status.flash.percent);
-                lastFlashUpdate = now;
-            }
+            metricFlashValue.textContent = fmtPercent(status.flash.percent) + ' (' + formatBytes(status.flash.used) + ' / ' + formatBytes(status.flash.total) + ')';
+            updateProgressBar(metricFlashBar, status.flash.percent);
         } catch (e) {
             addLog(t('logs.system_status_failed'), 'error');
         }
@@ -782,7 +799,7 @@
         await loadWifiList();
         await loadChatList();
         setInterval(loadStatus, 5000);
-        setInterval(loadSystemStatus, 3000);
+        setInterval(loadSystemStatus, 2000);
     }
 
     init();

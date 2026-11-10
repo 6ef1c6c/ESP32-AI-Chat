@@ -154,7 +154,7 @@ static esp_err_t api_ai_get(httpd_req_t* req) {
     std::string active = storage::load_ai_active();
     cJSON* root = cJSON_CreateObject();
     cJSON* arr = cJSON_CreateArray();
-    for (const auto& p : profiles) arr = cJSON_AddItemToArray(arr, profile_to_json(p, false));
+    for (const auto& p : profiles) cJSON_AddItemToArray(arr, profile_to_json(p, false));
     cJSON_AddItemToObject(root, "profiles", arr);
     cJSON_AddStringToObject(root, "active", active.c_str());
     esp_err_t ret = send_json(req, root);
@@ -187,7 +187,7 @@ static esp_err_t api_ai_profiles_get(httpd_req_t* req) {
     std::string active = storage::load_ai_active();
     cJSON* root = cJSON_CreateObject();
     cJSON* arr = cJSON_CreateArray();
-    for (const auto& p : profiles) arr = cJSON_AddItemToArray(arr, profile_to_json(p, true));
+    for (const auto& p : profiles) cJSON_AddItemToArray(arr, profile_to_json(p, true));
     cJSON_AddItemToObject(root, "profiles", arr);
     cJSON_AddStringToObject(root, "active", active.c_str());
     esp_err_t ret = send_json(req, root);
@@ -328,6 +328,7 @@ static esp_err_t api_system_status(httpd_req_t* req) {
 
     cJSON* cpu = cJSON_CreateObject();
     cJSON_AddNumberToObject(cpu, "percent", status.cpu_percent);
+    cJSON_AddNumberToObject(cpu, "temp", status.temp_celsius);
     cJSON_AddItemToObject(root, "cpu", cpu);
 
     cJSON* mem = cJSON_CreateObject();

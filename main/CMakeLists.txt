@@ -18,6 +18,7 @@ idf_component_register(
         led_strip
         driver
         esp_driver_gpio
+        esp_driver_tsens
     EMBED_FILES
         "../web_ui/index.html"
         "../web_ui/style.css"
