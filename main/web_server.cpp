@@ -326,10 +326,7 @@ static esp_err_t api_system_status(httpd_req_t* req) {
     auto status = monitor::get_status();
     cJSON* root = cJSON_CreateObject();
 
-    cJSON* cpu = cJSON_CreateObject();
-    cJSON_AddNumberToObject(cpu, "percent", status.cpu_percent);
-    cJSON_AddNumberToObject(cpu, "temp", status.temp_celsius);
-    cJSON_AddItemToObject(root, "cpu", cpu);
+    cJSON_AddNumberToObject(root, "temp", status.temp_celsius);
 
     cJSON* mem = cJSON_CreateObject();
     cJSON_AddNumberToObject(mem, "percent", status.mem_percent);

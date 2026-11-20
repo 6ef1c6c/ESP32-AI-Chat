@@ -24,7 +24,7 @@
             'logs.status_failed': 'Failed to get status', 'logs.system_status_failed': 'Failed to get system status',
             'logs.load_ai_failed': 'Failed to load AI config', 'logs.load_log_level_failed': 'Failed to load log level', 'logs.load_rgb_failed': 'Failed to load RGB settings',
             'settings.language.title': '语言 / Language',
-            'settings.status.title': '系统状态', 'settings.status.cpu': 'CPU 占用', 'settings.status.mem': '内存 占用', 'settings.status.flash': 'Flash 占用', 'settings.status.temp': 'CPU 温度',
+            'settings.status.title': '系统状态', 'settings.status.mem': '内存 占用', 'settings.status.flash': 'Flash 剩余', 'settings.status.temp': 'CPU 温度',
             'settings.rgb.title': 'RGB 灯', 'settings.rgb.red': '红', 'settings.rgb.green': '绿', 'settings.rgb.blue': '蓝', 'settings.rgb.gradient': '渐变', 'settings.rgb.off': '关闭', 'settings.rgb.pin': '数据引脚', 'settings.rgb.save_btn': '保存 RGB 设置',
             'settings.network.title': '网络状态', 'settings.network.sta_status': 'STA 状态', 'settings.network.sta_ip': 'STA IP',
             'settings.network.connected': '已连接', 'settings.network.disconnected': '未连接',
@@ -72,7 +72,7 @@
             'logs.status_failed': 'Failed to get status', 'logs.system_status_failed': 'Failed to get system status',
             'logs.load_ai_failed': 'Failed to load AI config', 'logs.load_log_level_failed': 'Failed to load log level', 'logs.load_rgb_failed': 'Failed to load RGB settings',
             'settings.language.title': 'Language / 语言',
-            'settings.status.title': 'System Status', 'settings.status.cpu': 'CPU Usage', 'settings.status.mem': 'Memory Usage', 'settings.status.flash': 'Flash Usage', 'settings.status.temp': 'CPU Temp',
+            'settings.status.title': 'System Status', 'settings.status.mem': 'Memory Usage', 'settings.status.flash': 'Flash Free', 'settings.status.temp': 'CPU Temp',
             'settings.rgb.title': 'RGB LED', 'settings.rgb.red': 'Red', 'settings.rgb.green': 'Green', 'settings.rgb.blue': 'Blue', 'settings.rgb.gradient': 'Gradient', 'settings.rgb.off': 'Off', 'settings.rgb.pin': 'Data Pin', 'settings.rgb.save_btn': 'Save RGB Settings',
             'settings.network.title': 'Network Status', 'settings.network.sta_status': 'STA Status', 'settings.network.sta_ip': 'STA IP',
             'settings.network.connected': 'Connected', 'settings.network.disconnected': 'Disconnected',
@@ -671,8 +671,6 @@
         if (r.checked) saveConfig('/api/log_level', { level: parseInt(r.value) }, 'logs.log_level_saved', 'logs.log_level_failed');
     }));
 
-    const metricCpuValue = document.getElementById('metric-cpu-value');
-    const metricCpuBar = document.getElementById('metric-cpu-bar');
     const metricTempValue = document.getElementById('metric-temp-value');
     const metricTempBar = document.getElementById('metric-temp-bar');
     const metricMemValue = document.getElementById('metric-mem-value');
@@ -709,16 +707,14 @@
         try {
             const status = await apiGet('/api/system_status');
 
-            metricCpuValue.textContent = fmtPercent(status.cpu.percent);
-            updateProgressBar(metricCpuBar, status.cpu.percent);
-
-            metricTempValue.textContent = fmtTemp(status.cpu.temp);
-            updateTempBar(metricTempBar, status.cpu.temp);
+            metricTempValue.textContent = fmtTemp(status.temp);
+            updateTempBar(metricTempBar, status.temp);
 
             metricMemValue.textContent = fmtPercent(status.mem.percent) + ' (' + formatBytes(status.mem.free) + ' / ' + formatBytes(status.mem.total) + ')';
             updateProgressBar(metricMemBar, status.mem.percent);
 
-            metricFlashValue.textContent = fmtPercent(status.flash.percent) + ' (' + formatBytes(status.flash.used) + ' / ' + formatBytes(status.flash.total) + ')';
+            const flashFree = (status.flash.total && typeof status.flash.used === 'number') ? (status.flash.total - status.flash.used) : null;
+            metricFlashValue.textContent = fmtPercent(status.flash.percent) + ' (' + formatBytes(flashFree) + ' / ' + formatBytes(status.flash.total) + ')';
             updateProgressBar(metricFlashBar, status.flash.percent);
         } catch (e) {
             addLog(t('logs.system_status_failed'), 'error');
@@ -799,7 +795,7 @@
         await loadWifiList();
         await loadChatList();
         setInterval(loadStatus, 5000);
-        setInterval(loadSystemStatus, 2000);
+        setInterval(loadSystemStatus, 3000);
     }
 
     init();

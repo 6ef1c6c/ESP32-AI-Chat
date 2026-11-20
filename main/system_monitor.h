@@ -5,7 +5,6 @@
 namespace monitor {
 
 struct SystemStatus {
-    float cpu_percent;
     float mem_percent;
     float flash_percent;
     float temp_celsius;
